@@ -1,0 +1,1 @@
+aws cloudformation create-stack --stack-name udagram-net --template-body file://udagram-network.yaml --parameters file://udagram-parameters.json --region=us-west-2

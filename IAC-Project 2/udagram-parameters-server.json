@@ -1,0 +1,22 @@
+[
+    {
+        "ParameterKey": "EnvironmentName",
+        "ParameterValue": "UdagramPrjGuru"
+    },
+    {
+        "ParameterKey": "InstanceType",
+        "ParameterValue": "t2.medium"
+    },
+    {
+        "ParameterKey": "ImageId",
+        "ParameterValue": "ami-0d1cd67c26f5fca19"
+    },
+    {
+        "ParameterKey": "BastionInstanceType",
+        "ParameterValue": "t2.micro"
+    },
+    {
+        "ParameterKey": "VolumeSize",
+        "ParameterValue": "10"
+    }
+]

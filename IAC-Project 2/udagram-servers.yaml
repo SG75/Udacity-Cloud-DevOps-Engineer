@@ -1,0 +1,217 @@
+Description: >
+     Udagram Project by Gururaj Sudhindra
+     server infrastructure YAML Script
+     Developers push the code to S3 bucket by name s3://udagram-guru-s3
+     
+
+Parameters:
+
+    EnvironmentName:
+        Description: Udagram Project Server infrastructure env name
+        Type: String
+    
+    InstanceType:
+        Description: Udagram Project Server EC2 instance type - t2.medium
+        Type: String
+    
+    ImageId:
+        Description: Udagram Project Server ami image Ubuntu 18.04 ami-067707eefb70fdd6f
+        Type: String
+
+    BastionInstanceType:
+        Description: Udagram Project Server EC2 instance type - t2.micro
+        Type: String
+    
+    VolumeSize:
+        Description: Udagram Project Server instance volume size, 10 GB
+        Type: String
+
+Resources:
+
+    UdagramLBSecGroup:
+        Type: "AWS::EC2::SecurityGroup"
+        Properties:
+          GroupDescription: Allow http port 80 to Udagram public load balancer
+          VpcId:
+            Fn::ImportValue:
+              !Sub "${EnvironmentName}-VPCID"
+          SecurityGroupIngress:
+            - IpProtocol: tcp
+              FromPort: 80
+              ToPort: 80
+              CidrIp: 0.0.0.0/0
+          SecurityGroupEgress:
+            - IpProtocol: tcp
+              FromPort: 80
+              ToPort: 80
+              CidrIp: 0.0.0.0/0
+            - IpProtocol: tcp
+              FromPort: 80
+              ToPort: 80
+              CidrIp: 0.0.0.0/0
+
+    UdagramIAMProfileRoles:
+      Type: AWS::IAM::InstanceProfile
+      Properties: 
+        Path: "/"
+        Roles:
+          - udagramS3ReadOnlyEC2               # this role needs to be created via AWS console
+
+    UdagramWebServerSecGroup:
+      Type: "AWS::EC2::SecurityGroup"
+      Properties:
+        GroupDescription: Allow http to hosts and SSH from local only
+        VpcId:
+          Fn::ImportValue:
+            !Sub "${EnvironmentName}-VPCID"
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 80
+            ToPort: 80
+            CidrIp: 0.0.0.0/0
+          - IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: 0.0.0.0/0
+        SecurityGroupEgress:
+          - IpProtocol: tcp
+            FromPort: 0
+            ToPort: 65535
+            CidrIp: 0.0.0.0/0
+
+    UdagramWebAppLaunchConfig:                            # Launch configuration for EC2 instance to use with autoscaling group 
+      Type: "AWS::AutoScaling::LaunchConfiguration"
+      Properties:
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            apt-get update -y
+            apt-get install unzip awscli -y
+            apt-get install apache2 -y
+            systemctl start apache2.service
+            cd /var/www/html
+            aws s3 cp s3://udagram-guru-s3/udagramGuru.zip .
+            unzip -o udagramGuru.zip
+        ImageId: !Ref ImageId
+        #KeyName: < >                  # not using any ssh key to login to EC2 instance
+        SecurityGroups:
+          - Ref: UdagramWebServerSecGroup
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile: !Ref UdagramIAMProfileRoles
+        BlockDeviceMappings:
+          - DeviceName: "/dev/sdk"
+            Ebs:
+              VolumeSize: !Ref VolumeSize
+
+    UdagramWebAppGroup:
+      Type: "AWS::AutoScaling::AutoScalingGroup"
+      Properties:
+        VPCZoneIdentifier:
+          - Fn::ImportValue:
+              !Sub "${EnvironmentName}-PRIV-NETS"
+        LaunchConfigurationName: 
+          Ref: UdagramWebAppLaunchConfig
+        MinSize: '4'
+        MaxSize: '8'
+        TargetGroupARNs:             
+        - Ref: UdagramWebAppTargetGroup  
+
+    UdagramWebAppLB:
+      Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+      Properties:
+        Subnets:
+          - Fn::ImportValue: !Sub "${EnvironmentName}-PUB1-SN"
+          - Fn::ImportValue: !Sub "${EnvironmentName}-PUB2-SN"
+        SecurityGroups:
+          - Ref: UdagramLBSecGroup
+
+    UdagramListener:
+      Type: "AWS::ElasticLoadBalancingV2::Listener"
+      Properties:
+        DefaultActions: #required
+          - Type: forward
+            TargetGroupArn:
+              Ref: UdagramWebAppTargetGroup  
+        LoadBalancerArn: #required
+          Ref: UdagramWebAppLB
+        Port: '80' #required
+        Protocol: HTTP #required
+
+    UdagramALBListenerRule:
+      Type: "AWS::ElasticLoadBalancingV2::ListenerRule"
+      Properties:
+        Actions: #required
+          - Type: forward
+            TargetGroupArn: !Ref 'UdagramWebAppTargetGroup'
+        Conditions: #required
+          - Field: path-pattern
+            Values: [/]
+        ListenerArn: !Ref 'UdagramListener' #required
+        Priority: 1 #required
+
+    UdagramWebAppTargetGroup:
+      Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+      Properties:
+        HealthCheckIntervalSeconds: 10
+        HealthCheckPath: /
+        HealthCheckProtocol: HTTP
+        HealthCheckTimeoutSeconds: 8
+        HealthyThresholdCount: 2
+        Port: 80
+        Protocol: HTTP
+        UnhealthyThresholdCount: 5
+        VpcId:
+          Fn::ImportValue:
+            Fn::Sub: "${EnvironmentName}-VPCID"
+    
+    UdagramHABastionHostSecGroup:
+      Type: "AWS::EC2::SecurityGroup"
+      Properties:
+        GroupDescription: Allow SSH to Bastion Host
+        VpcId:
+          Fn::ImportValue:
+            !Sub "${EnvironmentName}-VPCID"
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 22
+            ToPort: 22
+            CidrIp: 0.0.0.0/0
+            # CidrIp: 
+            #   Fn::Base64: !Sub |
+            #     $({curl http://checkip.amazonaws.com/}/24)  ## work in progress , need to check how to allow login to bastion host only from MY IP
+        SecurityGroupEgress:
+          - IpProtocol: tcp
+            FromPort: 0
+            ToPort: 65535
+            CidrIp: 0.0.0.0/0
+
+    UdagramHABastionHostLaunchConfig:
+      Type: "AWS::AutoScaling::LaunchConfiguration"
+      Properties:
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            apt-get update -y
+        ImageId: !Ref ImageId
+        SecurityGroups:
+          - Ref: UdagramHABastionHostSecGroup
+        InstanceType: !Ref BastionInstanceType
+
+    UdagramHABastionHostGroup:
+      Type: "AWS::AutoScaling::AutoScalingGroup"
+      Properties:
+        VPCZoneIdentifier:
+          - Fn::ImportValue:
+              !Sub "${EnvironmentName}-PUB-NETS"
+        LaunchConfigurationName: 
+          Ref: UdagramHABastionHostLaunchConfig
+        MinSize: '2'
+        MaxSize: '4'
+
+# Outputs:
+
+#     UdagramDNSName:
+#       Description: Udagram DNS Name
+#       Value: !Sub "http://${UdagramWebAppLB.DNSName}"
+#       Export: 
+#         Name: !Sub "${EnvironmentName}-DNSName"

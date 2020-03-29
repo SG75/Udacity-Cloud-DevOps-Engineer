@@ -1,0 +1,27 @@
+[
+    {
+        "ParameterKey": "EnvironmentName",
+        "ParameterValue": "UdagramPrjGuru"
+    },
+    {
+        "ParameterKey": "UdagramVpcCIDR",
+        "ParameterValue": "192.168.0.0/16"
+    },
+    {
+        "ParameterKey": "UdagramPub1CIDR",
+        "ParameterValue": "192.168.1.0/24"
+    },
+    {
+        "ParameterKey": "UdagramPub2CIDR",
+        "ParameterValue": "192.168.2.0/24"
+    },
+    {
+        "ParameterKey": "UdagramPriv1CIDR",
+        "ParameterValue": "192.168.3.0/24"
+    },
+    {
+        "ParameterKey": "UdagramPriv2CIDR",
+        "ParameterValue": "192.168.4.0/24"
+    }
+]
+
