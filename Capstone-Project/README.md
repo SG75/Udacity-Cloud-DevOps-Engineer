@@ -1,3 +1,4 @@
+
 ## Capstone Project: Implement a rolling deployment CI/CD pipeline.
 
 ---
@@ -28,4 +29,5 @@ in this project, Ansible is used as Deployment tool which pushes the application
 ###### Continous Deployment: 
 ansible deploys the application on to a Kubernetes cluster, hosting the application on port 8080, which can be accessed via master node's IP address. This entire process happens automatically whenever a developer commits new code to the SCM.
 
+![simple devops cicd pipeline](https://github.com/SG75/Udacity-Cloud-DevOps-Engineer/blob/master/Capstone-Project/images/cicd.jpg)
 
