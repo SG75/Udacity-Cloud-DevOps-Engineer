@@ -11,5 +11,5 @@ This project builds a simple devops Rolling deployment CI/ CD pipeline.
 - ###### docker : to host application images
 - ###### kubernetes : to manage docker containers 
 
-![simple devops cicd pipeline](/images/cicd.jpg)
+![simple devops cicd pipeline](Capstone-Project/images/cicd.jpg)
 
