@@ -15,15 +15,15 @@ This project builds a simple DevOps Rolling deployment CI/ CD pipeline.
 ---
 
 
-###### Continous Integration:
+###### continuous Integration:
 
 Developers push their code to SCM, in this project git is used as SCM. Once the code is pushed to git the CI tool (Jenkins) which is configured to detect new commits will automatically build and test the artifacts.
 
-###### Continous Delivery:
+###### continuous Delivery:
 
 The artifacts from the previous stage get deployed into the target environment like a VM, docker container or Kubernetes cluster.
 in this project, Ansible is used as Deployment tool which pushes the application image to DockerHub. This image can be pulled by a docker container or Kubernetes cluster to deploy the application.
 
-###### Continous Deployment: 
+###### continuous Deployment: 
 ansible deploys the application on to a Kubernetes cluster, hosting the application on port 8080, which can be accessed via master node's IP address. This entire process happens automatically whenever a developer commits new code to the SCM.
 
